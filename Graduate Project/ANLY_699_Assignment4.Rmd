@@ -1,0 +1,179 @@
+---
+title: "ANLY_699_Assignment4"
+author: "Subhash Pemmaraju"
+date: "July 5, 2020"
+output: 
+        html_document:
+                code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load all the required packages
+library(readr)
+library(psych)
+library(tidyverse)
+library(Hmisc)
+library(stats)
+library(car)
+library(dae)
+library(corrplot)
+library(dplyr)
+library(moments)
+library(ggplot2)
+library(bios2mds)
+# Set Working Directory
+setwd("C:/Users/subha/Desktop/GRAD695")
+
+# Load the districts Shapefile
+health_ind<-read.csv("county_health_ind_2.csv")
+head(health_ind)
+health_ind_cty <- subset(health_ind, County!="")
+#head(health_ind_cty)
+
+park_access<-read.csv("data_191957.csv")
+#head(park_access)
+
+merged_data<-merge(park_access, health_ind_cty, by.x = "countyFIPS", by.y = "FIPS", all.x = TRUE)
+
+```
+
+
+
+### Description of the data including dependent variable
+
+```{r warning=FALSE, message=FALSE}
+fa_data <- merged_data[, c(6,9:27)]
+fa_data1 <- fa_data[complete.cases(fa_data),]
+#dim(fa_data1)
+str(fa_data1)
+#names(fa_data1)
+```
+
+The dataset contains 20 variables. 
+
+The dimensionality of the data is `r dim(fa_data1)`
+
+The datatypes are all numeric/integer as shown in the table.
+
+The names of the variables are:
+`r names(fa_data1)`
+
+
+### Correlation Matrix of all the variables
+
+```{r warning=FALSE, message=FALSE}
+corr_matrix <- cor(fa_data1)
+#corr_matrix
+#corrplot(corr_matrix, order="hclust", type="upper", tl.srt = 45)
+
+```
+
+### Correlation Plot
+
+
+```{r warning=FALSE, message=FALSE}
+#Plot statistically significant correlations
+res2 <- rcorr(as.matrix(fa_data1), type="pearson")
+# Extract the correlation coefficients
+#res2$r
+# Extract p-values
+#res2$P
+# Insignificant correlations are leaved blank
+corrplot(res2$r, type="upper", order="hclust",
+         p.mat = res2$P, sig.level = 0.01, insig = "blank")
+```
+
+
+As can be seen from the correlation plot, many of the variables are highly correlated with each other. This leads to multicollinearity. We can confirm this fact by calculating the Variance Inflation factor for a regression of the dependent variable against all the independent variables
+
+```{r warning=FALSE, message=FALSE}
+model <- lm(yrs_plr ~., data = fa_data1)
+vif(model)
+
+```
+
+The VIF has several variables with VIF being high >> 2.5. Therefore multicollinearity is a big problem.
+
+### KMO Analysis
+
+we now conduct the KMO test to check whether factor analysis is the right approach for this. 
+
+```{r warning=FALSE, message=FALSE}
+data_fa <- fa_data1[,-1:-2]
+datamatrix <- cor(data_fa)
+KMO(r=datamatrix)
+
+```
+
+### KMO Output
+
+From the KMO test result, we can see that overall MSA > 0.5 and therefore, factor analysis is appropriate here. Notice that we dropped the dependent variable of years of potential lives lost as well as the core independent variable (% of population within half a mile of a park). 
+
+
+### Eigen Values and Optimal number of Factors
+
+
+```{r warning=FALSE, message=FALSE}
+ev <- eigen(cor(data_fa))
+ev$values
+scree(data_fa, factors=TRUE, pc=FALSE)
+```
+
+
+From the Scree Plot shown above, we can conclude that the optimal number of factors is 2. 
+
+
+### Factor Analysis
+
+
+```{r warning=FALSE, message=FALSE}
+nfactors <- 2
+fit1 <-factanal(data_fa,nfactors,scores = c("regression"),rotation = "varimax")
+print(fit1)
+
+```
+
+
+Factor analysis results are shown above. As can be seen, Factor 1 explains 35.2% of the variance and Factor 2 explains 11.5% of the variance. Together 46.7% of the variance is explained. We plot the factor analysis diagram as shown below. As we can see Factor2 has only age variables - % of population over 65 and % of population less than 18. Factor1 has variables on demographics and pre-existing health conditions. 
+
+
+
+
+```{r warning=FALSE, message=FALSE}
+fa_var <-  fa(r=data_fa, nfactors = 2, rotate = "varimax", fm="pa")
+fa.diagram(fa_var)
+
+```
+
+
+```{r warning=FALSE, message=FALSE}
+regdata <- cbind(fa_data1[1],fa_data1[2], fa_var$scores)
+#Labeling the data
+
+names(regdata) <- c("park_access", "yrs_plr", "health_demo",
+                    "age_dist")
+
+
+```
+
+
+### Regression Analysis
+
+
+```{r warning=FALSE, message=FALSE}
+#Regression Model using train data
+
+model1 = lm(yrs_plr~., regdata)
+summary(model1)
+
+
+```
+
+
+We now carry out regression analysis with the factors as shown above. The dependent variable (yrs_plr) is regressed against the primary independent variable (park_access) and the two factor variables (health_demo and age_dist). As can be seen from the regression results, R^2 is high at 62% and the coefficient of park_access is not statistically significant. This suggests that pre-existing health conditions and demographics and age explain all of the impact on years of potential lives lost. We also check the regression for multicollinearity. Since we used factor analysis, multi-collinearity shouldn't be a problem. As we can see, the VIF < 2.5. 
+
+```{r warning=FALSE, message=FALSE}
+vif(model1)
+
+```

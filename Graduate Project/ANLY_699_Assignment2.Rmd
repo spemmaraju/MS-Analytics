@@ -1,0 +1,86 @@
+---
+title: "ANLY 699: Assignment 2"
+author: "Subhash Pemmaraju"
+date: "06/07/2020"
+output: 
+        html_document:
+                code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Set Working Directory
+setwd("C:/Users/subha/Desktop/GRAD695")
+
+# Load the districts Shapefile
+library(xtable)
+library(kableExtra)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+health_ind<-read.csv("county_health_ind.csv")
+health_ind_cty <- subset(health_ind, County!="")
+
+park_access<-read.csv("data_191957.csv")
+
+
+
+merged_data<-merge(park_access, health_ind_cty, by.x = "countyFIPS", by.y = "FIPS", all.x = TRUE)
+
+multi.fun <- function(x) {
+  c(Count = length(x), Mean = mean(x, na.rm = T), SD = sd(x, na.rm=T), Missing_Num = sum(is.na(x)), Missing_Perc = sum(is.na(x))*100/length(x))
+}
+
+
+missing_sum<-sapply(merged_data[,c(6,9:14,16)], multi.fun)
+```
+
+
+```{r warning=FALSE, message=FALSE}
+missing_sum%>%kable("html", digits=1,
+ col.names = c("% w Parks access", 
+               "Yrs of Pot. life lost Rate", 
+               "% w fair/poor health", 
+               "Avg days phys. unhappy", 
+               "Avg days ment. unhappy", 
+               "% obese", 
+               "% Phys inactive", 
+               "% smokers"))%>%kable_styling(bootstrap_options="striped",full_width=FALSE)
+
+complete_data <- merged_data[complete.cases(merged_data[,c(6,9:14,16)]),]
+```
+
+## Summary of missing variables
+
+There is very little data missing in the dataset. Among all of the variables, Years of potential life lost is the only variable which has 295 missing records, which is 9.4% of the total sample. All the other variables have at most 2 missing records which is under 0.5% of the total sample. 
+
+No. of missing overall = `r nrow(merged_data) - nrow(complete_data)`
+
+% missing overall = `r (nrow(merged_data) - nrow(complete_data))/nrow(merged_data)*100`
+
+
+```{r warning=FALSE, message=FALSE}
+missing_data <- subset(health_ind_cty, is.na(yrs_plr) == T )
+#missing_data
+```
+
+### Summary of missing data in Years of potential life lost
+
+There is no apparent pattern to the missing data in years of potential life lost. It is missing in counties across multiple states.Furthermore, MCAR test below shows that normality can be rejected and consequently, that MCAR cannot be rejected. Therefore, the pattern of missing data is MCAR. 
+
+```{r warning=FALSE, message=FALSE}
+library(BaylorEdPsych)
+library(MissMech)
+
+TestMCARNormality(merged_data[,c(6,9:14,16)])
+```
+
+
+
+### Summary
+Because the sample size is larege enough (3142) that excluding 295 missing cases will still leave a large enough sample, we can consider using list-wise deletions and run the analysis only on complete cases. Alternatively, for the missing values, we can also use a mean substitution technique to replace all the missing values for years of potential life lost with the mean for the available data. This technique is superior in that there is potentially some value to the data in the other variables for the purpose of this analysis and it might be worth it to retain them. 
+
+
+```{r warning=FALSE, message=FALSE}
+```

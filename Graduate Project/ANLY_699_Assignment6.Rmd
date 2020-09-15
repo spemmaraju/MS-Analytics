@@ -1,0 +1,76 @@
+---
+title: "ANLY_699_Assignment6"
+author: "Subhash Pemmaraju"
+date: "July 19, 2020"
+output: 
+        html_document:
+                code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load all the required packages
+library(readr)
+library(psych)
+library(tidyverse)
+library(Hmisc)
+library(stats)
+library(car)
+library(dae)
+library(corrplot)
+library(dplyr)
+library(moments)
+library(ggplot2)
+library(bios2mds)
+library(factoextra)
+library(PerformanceAnalytics)
+# Set Working Directory
+setwd("C:/Users/subha/Desktop/GRAD695")
+
+
+health_ind<-read.csv("final_dataset.csv")
+head(health_ind)
+health_ind_cty <- subset(health_ind, County!="")
+#head(health_ind_cty)
+
+park_access<-read.csv("data_191957.csv")
+#head(park_access)
+
+merged_data<-merge(park_access, health_ind_cty, by.x = "countyFIPS", by.y = "FIPS", all.x = TRUE)
+
+```
+
+
+
+### Principal Component Analysis
+
+
+```{r warning=FALSE, message=FALSE}
+
+clust_data <- merged_data[, c(6,9:19)]
+clust_data1 <- clust_data[complete.cases(clust_data),]
+#dim(fa_data1)
+
+
+x<-prcomp(clust_data1[,c(6:12)], retx=TRUE, center=TRUE, scale=TRUE)
+summary(x)
+fviz_screeplot(x)
+```
+
+From the proportion of variance, we can see that we need a total of 4 components for over 80% of the variation to be explained. That can also be observed from the screeplot shown above.
+
+
+### Visualization of PCA components
+
+
+```{r warning=FALSE, message=FALSE}
+
+biplot(x,scale=0, cex=1.3)
+```
+
+From the biplot, we can see that the variables median_inc, perc_college, perc_unemp contribute the most to PC1. perc_gt_65 and perc_lt_18 contribute the most to PC2. perc_black contribute to both components
+
+
+### Importance of PCA in final project
+
+Using K-means clustering directly on the initial set of demographic variables may not be efficient. PCA can be used to reduce the dimensionality of a bunch of demographic variables. The reduced dimensional principal components can then be used to perform K-means clustering and create multiple clusters that can then be used to perform subsequent analysis. 

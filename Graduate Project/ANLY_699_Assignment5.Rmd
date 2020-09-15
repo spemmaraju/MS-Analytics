@@ -1,0 +1,155 @@
+---
+title: "ANLY_699_Assignment5"
+author: "Subhash Pemmaraju"
+date: "July 12, 2020"
+output: 
+        html_document:
+                code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load all the required packages
+library(readr)
+library(psych)
+library(tidyverse)
+library(Hmisc)
+library(stats)
+library(car)
+library(dae)
+library(corrplot)
+library(dplyr)
+library(moments)
+library(ggplot2)
+library(bios2mds)
+library(factoextra)
+# Set Working Directory
+setwd("C:/Users/subha/Desktop/GRAD695")
+
+health_ind<-read.csv("county_health_ind_2.csv")
+head(health_ind)
+health_ind_cty <- subset(health_ind, County!="")
+#head(health_ind_cty)
+
+park_access<-read.csv("data_191957.csv")
+#head(park_access)
+
+merged_data<-merge(park_access, health_ind_cty, by.x = "countyFIPS", by.y = "FIPS", all.x = TRUE)
+
+```
+
+
+
+### Variables for Cluster Analysis
+
+```{r warning=FALSE, message=FALSE}
+clust_data <- merged_data[, c(10:27)]
+clust_data1 <- clust_data[complete.cases(clust_data),]
+#dim(fa_data1)
+str(clust_data1)
+#names(fa_data1)
+```
+
+The 18 variables above are used to identify clusters. The categories of the variables are broadly in 3 categories: 
+
+* Demographic Data (Age, Race, Gender)
+
+* Socio-economic Data (Education, income, unemployment, insurane coverage, poverty etc.)
+
+* Health Data (Obesity, Smoking, physical activity, mental health, drinking etc.)
+
+
+### Optimal number of clusters and K-Means Clustering
+
+```{r warning=FALSE, message=FALSE}
+df<-scale(clust_data1)
+
+set.seed(123)
+
+# function to compute total within-cluster sum of square 
+
+fviz_nbclust(df, kmeans, method="wss")
+
+```
+
+Based on the elbow plot, we can see that the bend in the elbow occurs at 3 clusters. Therefore, optimal number of clusters = 3. We also plot a range of cluster plots.
+
+### K means cluster plots
+
+
+```{r warning=FALSE, message=FALSE}
+k2 <- kmeans(df, centers = 2, nstart = 25)
+k3 <- kmeans(df, centers = 3, nstart = 25)
+k4 <- kmeans(df, centers = 4, nstart = 25)
+k5 <- kmeans(df, centers = 5, nstart = 25)
+
+# plots to compare
+p1 <- fviz_cluster(k2, geom = "point", data = df) + ggtitle("k = 2")
+p2 <- fviz_cluster(k3, geom = "point",  data = df) + ggtitle("k = 3")
+p3 <- fviz_cluster(k4, geom = "point",  data = df) + ggtitle("k = 4")
+p4 <- fviz_cluster(k5, geom = "point",  data = df) + ggtitle("k = 5")
+
+library(gridExtra)
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+
+```
+
+
+```{r warning=FALSE, message=FALSE}
+# Compute k-means clustering with k = 4
+set.seed(123)
+final <- kmeans(df, 3, nstart = 25)
+print(final$centers)
+print(final$size)
+```
+
+With 3 clusters, we can see the centers for each cluster as shown above. Cluster1 has 712 elements, Cluster2 has 1053 elements and Cluster3 has 1355 elements.
+
+### Hierarchical Clustering
+
+We use Agnes to conduct agglomeration clustering and identify which method has the highest coefficient. As can be seen below, that is the Ward method.  
+
+```{r warning=FALSE, message=FALSE}
+# methods to assess
+m <- c( "average", "single", "complete", "ward")
+names(m) <- c( "average", "single", "complete", "ward")
+
+# function to compute coefficient
+ac <- function(x) {
+  agnes(df, method = x)$ac
+}
+
+map_dbl(m, ac)
+
+# Dissimilarity matrix
+d <- dist(df, method = "euclidean")
+
+# Ward's method
+hc3 <- hclust(d, method = "ward.D2" )
+
+plot(hc3, cex = 0.6)
+
+```
+
+From the dendrogram, we can see that the number of optimal clusters is again 3, similar to K-means clustering.
+
+
+### Hierarchical clustering analysis
+
+
+```{r warning=FALSE, message=FALSE}
+
+# Cut tree into 4 groups
+sub_grp <- cutree(hc3, k = 3)
+
+# Number of members in each cluster
+table(sub_grp)
+
+plot(hc3, cex = 0.6)
+rect.hclust(hc3, k = 3, border = 2:5)
+
+fviz_cluster(list(data = df, cluster = sub_grp))
+```
+
+
+Number of members in each cluster and the boundaries of each clusters are shown in the plot above. 

@@ -1,0 +1,120 @@
+---
+title: "ANLY 699: Assignment 3"
+author: "Subhash Pemmaraju"
+date: "06/07/2020"
+output: 
+        html_document:
+                code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load all the required packages
+library(moments)
+library(stats)
+library(fdrtool)
+library(DoE.base)
+library(car)
+library(dae)
+library(effects)
+library(corrplot)
+library(dplyr)
+library(moments)
+library(ggplot2)
+# Set Working Directory
+setwd("C:/Users/subha/Desktop/GRAD695")
+
+# Load the districts Shapefile
+health_ind<-read.csv("county_health_ind.csv")
+head(health_ind)
+health_ind_cty <- subset(health_ind, County!="")
+#head(health_ind_cty)
+
+park_access<-read.csv("data_191957.csv")
+#head(park_access)
+
+summary(health_ind_cty$perc_smokers)
+health_ind_cty$smoking_seg[health_ind_cty$perc_smokers<15]<- "Smoking < 15%"
+health_ind_cty$smoking_seg[health_ind_cty$perc_smokers>=15 & health_ind_cty$perc_smokers<17]<- "Smoking 15-17%"
+health_ind_cty$smoking_seg[health_ind_cty$perc_smokers>=17 & health_ind_cty$perc_smokers<20]<- "Smoking 17-20%"
+health_ind_cty$smoking_seg[health_ind_cty$perc_smokers>=20]<- "Smoking >= 20%"
+
+health_ind_cty$smoking_seg<-factor(health_ind_cty$smoking_seg, levels = c("Smoking < 15%","Smoking 15-17%","Smoking 17-20%", "Smoking >= 20%"))
+
+merged_data<-merge(park_access, health_ind_cty, by.x = "countyFIPS", by.y = "FIPS", all.x = TRUE)
+
+```
+
+
+### Summary output of variables as is
+
+```{r warning=FALSE, message=FALSE}
+summary(merged_data[,c(6,9,13,16,18,19,20,21,22,23,24,25,26,27)])
+
+```
+### Summary output of variables with normalization
+
+```{r warning=FALSE, message=FALSE}
+merged_data1<- scale(merged_data[,c(6,9,13,16,18,19,20,21,22,23,24,25,26,27)])
+summary(merged_data1)
+
+```
+
+```{r warning=FALSE, message=FALSE}
+#Multiple regression model with demographic variables
+model1<-lm(yrs_plr~Value+perc_65up+perc_18less+perc_female+perc_black, data=data.frame(merged_data1))
+summary(model1)
+```
+
+### Regression Analysis: Model with demographic variables
+
+There is a clear statistically significant negative correlation of -0.18337 between Access to parks and years of potential life lost. What this means is that for every 1 unit increase in access to public parks, there is a 0.18 unit reduction in years of potential life lost. Furthermore, we can see that it is influenced by demographic variables. Higher is the percentage of population above 65 or below 18, more is the years of potential life lost. More is the percentage of black population, more is the potential life lost. However, as % of females in the population improves, then years of potential life improves. Hence the negative correlation.
+
+
+
+```{r warning=FALSE, message=FALSE}
+#Multiple regression model with demographic variables
+vif(model1)
+qqnorm(model1$residuals)
+qqline(model1$residuals)
+shapiro.test(model1$residuals)
+```
+
+### Regression Diagnostics
+
+The VIF has all values low <<5. Therefore multicollinearity is not a problem.
+The QQ plot shows some evidence of non-normality. The Shapiro-Wilkes test confirms that non-normality is a strong problem. The way to proceed in this case would be to take log variables or add square of independent variables as an additional correlate.
+
+
+```{r warning=FALSE, message=FALSE}
+#Multiple regression model with demographic variables and pre-existing health conditions
+model2<-lm(yrs_plr~Value+perc_65up+perc_18less+perc_female+perc_black+perc_obese+perc_smokers+perc_diabetes, data=data.frame(merged_data1))
+
+summary(model2)
+```
+
+### Regression Analysis: Model with demographic variables and variables for pre-existing health conditions
+
+From the regression analysis, we can see that in this case Years of potential lives lost and access to parks are positively correlated which does not make intuitive sense. What can be seen however, is that pre-existing health conditions like smoking and diabetes are strongly correlated and increase years of potential life lost. Percentage of obese population is not statistically significant. This is possibly because obesity and diabetes are strongly corrrelated. The model may suffer from multicolliearity. However, the VIF does not provide any such indication. 
+
+
+```{r warning=FALSE, message=FALSE}
+vif(model2)
+qqnorm(model2$residuals)
+qqline(model2$residuals)
+shapiro.test(model2$residuals)
+
+```
+
+### Regression Diagnostics
+
+Strong evidence of non-normality in the data based on Q-Q plot and Shapiro-Wilkes test. Further refinement of the model is needed. 
+
+
+```{r warning=FALSE, message=FALSE}
+anova(model1, model2)
+```
+
+### Comparison of two models
+
+Comparison of two models indicates that model2 with pre-existing conditions added is superior to the other model and has incremental predictive power over it. 

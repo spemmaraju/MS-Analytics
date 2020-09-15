@@ -1,0 +1,102 @@
+---
+title: "ANLY 699: Assignment 1"
+author: "Subhash Pemmaraju"
+date: "05/31/2020"
+output: 
+        html_document:
+                code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(moments)
+library(ggplot2)
+# Set Working Directory
+setwd("C:/Users/subha/Desktop/GRAD695")
+
+# Load the districts Shapefile
+health_ind<-read.csv("county_health_ind.csv")
+head(health_ind)
+health_ind_cty <- subset(health_ind, County!="")
+#head(health_ind_cty)
+
+park_access<-read.csv("data_191957.csv")
+#head(park_access)
+
+
+park_access$park_access_seg[park_access$Value<7]<- "Park access < 7%"
+park_access$park_access_seg[park_access$Value>=7 & park_access$Value<18]<- "Park access 7% - 18%"
+park_access$park_access_seg[park_access$Value>=18]<- "Park access >= 18%"
+
+park_access$park_access_seg<-factor(park_access$park_access_seg, levels = c("Park access < 7%","Park access 7% - 18%","Park access >= 18%"))
+
+
+health_ind_cty$smoking_seg[health_ind_cty$perc_smokers<15]<- "Smoking < 15%"
+health_ind_cty$smoking_seg[health_ind_cty$perc_smokers>=15 & health_ind_cty$perc_smokers<17]<- "Smoking 15-17%"
+health_ind_cty$smoking_seg[health_ind_cty$perc_smokers>=17 & health_ind_cty$perc_smokers<20]<- "Smoking 17-20%"
+health_ind_cty$smoking_seg[health_ind_cty$perc_smokers>=20]<- "Smoking >= 20%"
+
+health_ind_cty$smoking_seg<-factor(health_ind_cty$smoking_seg, levels = c("Smoking < 15%","Smoking 15-17%","Smoking 17-20%", "Smoking >= 20%"))
+
+merged_data<-merge(park_access, health_ind_cty, by.x = "countyFIPS", by.y = "FIPS", all.x = TRUE)
+```
+
+## Key Variables
+
+The key output variable being considered for this analysis is: "Years of life lost before the age of 75 per 100,000 population"
+
+The key input variables are
+
+* % of the population living within half a mile of a park
+
+* % of population that are smokers
+
+
+```{r warning=FALSE, message=FALSE}
+hist(health_ind_cty$yrs_plr, main="Distribution of variable --Yrs of life lost before age 75/100K--", xlab = "Yrs of life lost/100K")
+
+
+summary(health_ind_cty$yrs_plr)
+```
+
+
+
+### Summary
+From the histogram, we can see that the data is not normally distributed. It is positively skewed with a long tail. We can confirm this fact by looking at the skewness and kurtosis. 
+
+The skewness of the data is `r skewness(na.omit(health_ind_cty$yrs_plr))`
+
+The kurtosis of the data is `r kurtosis(na.omit(health_ind_cty$yrs_plr))`
+
+The high kurtosis of the data (>3) points to fat tails and the skew indicates a positive skew. 
+
+```{r warning=FALSE, message=FALSE}
+boxplot(merged_data$yrs_plr~merged_data$park_access_seg, main="Years of Potential Life Lost vs % living within half mile of a park")
+```
+
+### Summary
+From the boxplot, we can see that there are a few outliers in the data. Furthermore, we can see that the median moves lower as % of people with access to parks goes up. This is a good sign that there is a potential directional relationship between these two variables indicating that more access to parks leads to fewer years of potential lives lost.
+
+
+
+```{r warning=FALSE, message=FALSE}
+ggplot(data=merged_data, aes(x=Value,y=yrs_plr))+geom_point(alpha=0.3)+
+  ggtitle("Plot of Years of Potential Lives Lost vs Ease of Access to Parks")+xlab("Ease of Access to Parks")+ylab("Years of Potential Lives Lost")+
+  geom_smooth(method = 'lm', se=F)
+```
+
+###Summary
+From the scatterplot and the linearly fitted line, we can see a negative correlation, a confirmation of the initial finding from the boxplot. The scatterplot also shows several outliers. 
+
+
+```{r warning=FALSE, message=FALSE}
+ggplot(data=merged_data, aes(x=Value,y=yrs_plr,color=smoking_seg))+geom_point(alpha=0.3)+
+  ggtitle("Plot of Years of Potential Lives Lost vs Ease of Access to Parks at different levels of smoking")+xlab("Ease of Access to Parks")+ylab("Years of Potential Lives Lost")+
+  scale_colour_discrete(na.translate = F)+labs(color="Smoking Prevalence")+
+  geom_smooth(method = 'lm', se=F)
+```
+
+###Summary
+From the scatterplot and corresponding fitted lines, we see an interesting trend. The negative correlation between ease of access to parks and years of potential lives lost holds at different levels of smoking prevalance but at high levels of smoking prevalence, the slope is flatter. This indicates that the benefits of having access to public parks wears down as unhealthy behaviours such as smoking increase. The levels are also different with more smoking line at a higher level (more years of potential lives lost).
