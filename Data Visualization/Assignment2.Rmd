@@ -1,0 +1,283 @@
+---
+title: "Data Visualization-Assignment 2"
+author: "Raghu Sanugommula and Subhash Pemmaraju"
+date: "22nd February 2019"
+output: 
+        html_document:
+                code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width = 12, fig.height = 8, echo = TRUE)
+
+
+assignment2<-read.csv("C:/Users/subha/Desktop/ANLY512/gss2years.csv",header=TRUE)
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+library(tidyr)
+library(knitr)
+library(ggpubr)
+library(sqldf)
+library(sqldf)
+library(plotly)
+assignment2 %>% glimpse
+
+
+##Key variables utilized for our analysis. Descriptions were extracted from the PDF document provided by Professor####
+
+Assignmentvariables<-data.frame(
+sei="Hodge/Siegel/Rossi prestige scale score for respondent’s occupation.Actual score recorded",
+sex="Sex Coded by interviewer; Male/Female",
+region="region of interview",
+year="year of sample",
+owngun="Do you happen to have in your home any guns or revolvers? yes/no",
+tvhours="On the average day, about how many hours do you personally watch television?",
+age3="AGE variable recoded into thirds",
+race="What race do you consider yourself?")
+
+```
+
+### Introduction: Initial Summary
+
+kable function is used to wrap the variables and descriptions into a table for displaying information on the HTML
+  
+```{r warning=FALSE, message=FALSE}
+kable(Assignmentvariables)
+```
+
+
+### Exploratory Question 1:
+How many people from the sample own a gun; filtered by sex(Male/Female)?
+
+```{r warning=FALSE, message=FALSE}
+havegunyes<-filter( assignment2,owngun=="YES",sex=="MALE")
+havegunno<-filter(assignment2,owngun=="NO",sex=="FEMALE")
+
+
+havegunyesmale<-filter(assignment2,owngun=="YES",sex=="MALE")
+havegunyesmale1<-havegunyesmale$owngun=="YES"
+maleowngunyes<-sum(havegunyesmale1,na.rm=TRUE)
+
+havegunyesfemale<-filter(assignment2,owngun=="YES",sex=="FEMALE")
+havegunyesfemale1<-havegunyesfemale$owngun=="YES"
+femaleowngunyes<-sum(havegunyesfemale1,na.rm=TRUE)
+
+
+havegunnomale<-filter(assignment2,owngun=="NO",sex=="MALE")
+havegunnomale1<-havegunnomale$owngun=="NO"
+maleowngunno<-sum(havegunnomale1,na.rm=TRUE)
+
+havegunnofemale<-filter(assignment2,owngun=="NO",sex=="FEMALE")
+havegunnofemale1<-havegunnofemale$owngun=="NO"
+femaleowngunno<-sum(havegunnofemale1,na.rm=TRUE)
+
+
+
+sample<-c(maleowngunyes,femaleowngunyes,maleowngunno,femaleowngunno)
+plot1<-matrix(sample,nrow=2,dimnames=list(c("YES","NO"),c("Male","Female")))
+##To create a table with variables and values####
+kable(plot1)
+
+plotowngun<-melt(plot1)
+colnames(plotowngun)<-c("OwnGun","Sex","value")
+
+#### Visual####
+Figure1<-ggplot(plotowngun, aes(x=OwnGun, y=value,group=Sex,color=Sex))+ggtitle("Chart1:owngunbysex")+xlab("OwnGun:Yes/No")+ylab("Value") + geom_point(size=4)+geom_text(aes(label=value), hjust=0,vjust=0, color="blue", size=3.5)+theme_minimal()+annotate("text",x=1,y=505,label="Majority are the females said:Yes")
+Figure1
+```
+
+The idea behind developing the above plot is to find the ratio between male and female own a gun. 
+We predicted, obviously men ratio would be higher, but interestingly, the female is higher compared to men. 
+We have not included the empty columns where men's likely left the column unfilled, which is interpretable by looking at the graph.
+
+### Exploratory Question 2:
+
+####Prestige Score by race for Year 2000
+
+
+```{r warning=FALSE, message=FALSE}
+question2<-filter(assignment2,year==2000,race %in% c("WHITE","BLACK","OTHER"),sei!="NA")
+prestigescore2000<-data.frame(question2$sei,question2$race)
+prestigescore2000 %>% glimpse()
+colnames(prestigescore2000)<-c("prestigescore","race")
+
+Figure2<-ggplot(data=prestigescore2000, aes(x=race,y=prestigescore,color=race))+geom_boxplot(outlier.colour="red",outlier.shape=8,outlier.size=4)+ stat_summary(geom="text",fun.y=quantile,aes(label=sprintf("%1.1f", ..y..), color=factor(race)),position=position_nudge(x=0.33), size=3.5)+scale_fill_brewer(palette="Blues") + theme_classic()+ggtitle("PrestigeScorebyRacein2000")+xlab("PrestigeScore")+ylab("Race")
+Figure2
+
+```
+
+####Prestige Score by Race for year 2010
+
+```{r warning=FALSE, message=FALSE}
+question2010<-filter(assignment2,year==2010,race %in% c("WHITE","BLACK","OTHER"),sei!="NA")
+prestigescore2010<-data.frame(question2010$sei,question2010$race)
+prestigescore2010 %>% glimpse()
+colnames(prestigescore2010)<-c("prestigescore","race")
+Figure3<-ggplot(data=prestigescore2010, aes(x=race,y=prestigescore,color=race))+geom_boxplot(outlier.color="red",outlier.shape=8,outlier.size=4)+ stat_summary(geom="text",fun.y=quantile,aes(label=sprintf("%1.1f", ..y..), color=factor(race)),position=position_nudge(x=0.33), size=3.5)+scale_fill_brewer(palette="Blues") + theme_classic()+ggtitle("PrestigeScorebyRacein2010")+xlab("PrestigeScore")+ylab("Race")
+Figure3
+```
+
+####Prestige Score by Race for year 2000 vs 2010
+
+```{r warning=FALSE, message=FALSE}
+Figure2vs3<- ggarrange(Figure2,Figure3,ncol = 2, nrow = 1)
+Figure2vs3
+```
+SEI score[^3],[^4] is determined based on individual occupation. After observing the results, it seems, black and other races prestige median scores are equal compared to white individuals in 2000. Interesting comparison between the two graphs are; Minimum prestige score has not changed from 2000 to 2010. However, there are slight changes in median scores between 2000 and 2010. White individuals recorded the highest prestige score assuming they have a decent occupation. 
+In 2010, other race type individuals saw a spike in highest SEI score compare to 2000 although there are no significant changes in quartiles and median scores.
+
+### Exploratory Question 3 and 4:
+
+#### Prestige Score by region: 2000
+
+```{r warning=FALSE, message=FALSE}
+PSRegion<-filter(assignment2,year==2000,region %in% c("%E.NOR. CENTRAL%","%E.SOU. CENTRAL%","%MIDDLE ATLANTIC%","MOUNTAIN","NEW ENGLAND","PACIFIC","SOUTH ATLANTIC","%W.NOR. CENTRAL%","%W.SOU. CENTRAL%"),sei!="NA")
+PSRegion1<-data.frame(PSRegion$sei,PSRegion$region)
+PSRegion1 %>% glimpse()
+colnames(PSRegion1)<-c("prestigescore","region")
+Figure4<-ggplot(data=PSRegion1, aes(x=region,y=prestigescore,color=region))+geom_boxplot(outlier.colour="red",outlier.shape=8,outlier.size=4)+ stat_summary(geom="text",fun.y=quantile,aes(label=sprintf("%1.1f", ..y..), color=factor(region)),position=position_nudge(x=0.33), size=3.5)+scale_fill_brewer(palette="Blues") + theme_classic()+ggtitle("PrestigeScorebyRegionin2000")+xlab("PrestigeScore")+ylab("Region")
+Figure4
+```
+
+#### Prestige Score by region: 2010
+
+```{r warning=FALSE, message=FALSE}
+PSRegion2<-filter(assignment2,year==2010,region %in% c("%E.NOR. CENTRAL%","%E.SOU. CENTRAL%","%MIDDLE ATLANTIC%","MOUNTAIN","NEW ENGLAND","PACIFIC","SOUTH ATLANTIC","%W.NOR. CENTRAL%","%W.SOU. CENTRAL%"),sei!="NA")
+PSRegion3<-data.frame(PSRegion2$sei,PSRegion2$region)
+PSRegion3 %>% glimpse()
+colnames(PSRegion3)<-c("prestigescore","region")
+
+Figure5<-ggplot(data=PSRegion3, aes(x=region,y=prestigescore,color=region))+geom_boxplot(outlier.color="red",outlier.shape=8,outlier.size=4)+ stat_summary(geom="text",fun.y=quantile,aes(label=sprintf("%1.1f", ..y..), color=factor(region)),position=position_nudge(x=0.33), size=3.5)+scale_fill_brewer(palette="Blues") + theme_classic()+ggtitle("PrestigeScorebyRacein2010")+xlab("PrestigeScore")+ylab("Race")
+
+Figure4vs5<-ggarrange(Figure4,Figure5,ncol=2,nrow=1)
+
+Figure4vs5
+```
+
+After analyzing the prestige scores by race, we thought, it would be better to construct a graph to see what regions have the highest prestige scores and how they have been changing over time. It explains the economy of countries within these regions. First; we interpret the results for individual graphs; in 2000, though New England and Pacific regions have the highest prestige score, (it is determined in previous paragraphs) mountain region has the highest median scores, which could tell us how occupations are being equally credited in this region. Interestingly, there is no much difference in medians between Pacific, Mountain and New England. However, Mountain takes the stab of having the lowest prestige score compared to others in 2000. South Atlantic region countries seem are not doing an excellent job in maintaining the prestige of their occupations compare to other regions, but, south Atlantic stands in the race for highest prestige score with minimum difference.
+Prestige scores comparison 2000vs 2010; interestingly, Pacific region does not change much with regards to the highest prestige score since 2000 although it saw a drop in median score in 2010. Mountain region median prestige score seems dropped tremendously in 2010 although not much decrease in upper quartile and no change in max prestige score. New England also had a drop in max, top quartile, median. However, there is a slight increase in min prestige score, which seems reasonable. Pacific region countries prestige scores seems not much a difference from 2000. However, minor changes are being observed in the upper and lower quartiles and median as well. 
+
+
+### Exploratory Question 5 and 6:Tv hours by region
+
+####for Year 2000
+
+```{r warning=FALSE, message=FALSE}
+assignment2 %>% glimpse()
+
+tvhours<- filter(assignment2, year==2000,region %in% c("E.NOR. CENTRAL","E.SOU. CENTRAL","MIDDLE ATLANTIC","MOUNTAIN","NEW ENGLAND","PACIFIC","SOUTH ATLANTIC","W.NOR. CENTRAL","W.SOU. CENTRAL"),tvhours!="NA")
+tvhoursbyregion<-data.frame(tvhours$year,tvhours$region,tvhours$tvhours)
+tvhoursbyregion %>% glimpse()
+colnames(tvhoursbyregion)<-c("year","Region","TvHours")
+Figure6<-ggplot(data=tvhoursbyregion,aes(x=Region,y=TvHours,color=Region))+geom_boxplot(outlier.color="darkblue",outlier.shape=8,outlier.size=3,notch=FALSE)+stat_summary(geom="text",fun.y=quantile,aes(label=sprintf("%1.1f", ..y..),color=factor(Region)),position=position_nudge(x=0.33), size=3.5)+scale_fill_brewer(palette="Blues")+theme_classic()+ggtitle("TVHoursbyRegionin2000")+geom_jitter(shape=16,position=position_jitter(0.2))+annotate(geom="text",x=2,y=21,size=5,label="South Atlantic Has HighestTVHours",color="darkblue")
+
+Figure6
+```
+
+####for Year 2010
+
+```{r warning=FALSE, message=FALSE}
+tvhours<- filter(assignment2, year==2010,region %in% c("E.NOR. CENTRAL","E.SOU. CENTRAL","MIDDLE ATLANTIC","MOUNTAIN","NEW ENGLAND","PACIFIC","SOUTH ATLANTIC","W.NOR. CENTRAL","W.SOU. CENTRAL"),tvhours!="NA")
+tvhoursbyregion<-data.frame(tvhours$year,tvhours$region,tvhours$tvhours)
+tvhoursbyregion %>% glimpse()
+colnames(tvhoursbyregion)<-c("year","Region","TvHours")
+
+Figure7<-ggplot(data=tvhoursbyregion,aes(x=Region,y=TvHours,color=Region))+geom_boxplot(outlier.color="darkblue",outlier.shape=8,outlier.size=3,notch=FALSE)+stat_summary(geom="text",fun.y=quantile,aes(label=sprintf("%1.1f", ..y..),color=factor(Region)),position=position_nudge(x=0.33), size=3.5)+scale_fill_brewer(palette="Blues")+theme_classic()+ggtitle("TVHoursbyRegionin2010")+geom_jitter(shape=16,position=position_jitter(0.2))+annotate(geom="text",x=2,y=24,size=5,label="Sout hAtlantic Has Highest TVHours",color="darkblue")
+Figure7
+
+tvhoursbyregion2000vs2010<-ggarrange(Figure6,Figure7,ncol=2,nrow=1)
+
+tvhoursbyregion2000vs2010
+```
+
+####Visual Breif For Figure 6 vs 7
+
+This graph explains; the number of hours an individual may watch television on a given day by region. 
+The findings are as follows; in 2000, median and min hours seems the same for all five areas; however, 
+there are differences in maximum hours. Middle Atlantic and south Atlantic sample have recorded maximum hours. 
+We could say it was just entered for fun since no individual can watch television for 20/21 hours. 
+If we compare 2000 results with 2010, we see a difference in maximum television hours, but regions remain the same, 
+which seems unusual. Another observation would be; no changes in New England Values. We can conclude this interpretation by 
+saying, Middle Atlantic and South Atlantic countries are watching more television and seems no many differences from 2000 to 
+2010 although there is a big difference in globalization.
+
+###Exploratory Question 8:Tv hours by age in a given day
+
+```{r warning=FALSE, message=FALSE}
+tvhoursbyage<-filter(assignment2,age3 %in% c("18 THRU 36","37 THRU 53","54 THRU 89","NA"),tvhours!="NA")
+tvhoursbyage1<-data.frame(tvhoursbyage$age3,tvhoursbyage$tvhours)
+tvhoursbyage1%>% glimpse
+kable(tvhoursbyage1)
+colnames(tvhoursbyage1)<-c("AgeRange","TvHours")
+
+Figure8<-ggplot(data=tvhoursbyage1,aes(x=AgeRange,y=TvHours,color=AgeRange))+geom_boxplot(outlier.color="darkblue",outlier.shape=8,outlier.size=3,notch=FALSE)+stat_summary(geom="text",fun.y=quantile,aes(label=sprintf("%1.1f", ..y..),color=factor(AgeRange)),position=position_nudge(x=0.33), size=3.5)+scale_fill_brewer(palette="Blues")+theme_classic()+ggtitle("TVHoursbyAgeRange")+geom_jitter(shape=16,position=position_jitter(0.2))+annotate(geom="text",x=2,y=24,size=5,label="HighestTVHours",color="darkblue")
+
+Figure8
+```
+
+####Visual Brief for Figure 8
+
+We tried to find out what age range spend most of their hours watching television on a given day. Of course, 
+we predicted the older age group might have more television hours, but surprisingly, individuals aged 18 through 36 are equally 
+watching television with old 54 through 89. However, there is a difference in median hours. Age range 37 through 53 are also 
+equally watching TV with 54 through 89, 
+but there is a slight difference in median hours.
+
+
+###Exploratory Question 9:Which region has more individuals own a gun and thier corresponding SEI scores
+
+```{r warning=FALSE, message=FALSE}
+owngunbyregion<-filter(assignment2,owngun %in% c("YES","NO","NA"),region %in% c("E.NOR. CENTRAL","E.SOU. CENTRAL","MIDDLE ATLANTIC","MOUNTAIN","NEW ENGLAND","PACIFIC","SOUTH ATLANTIC","W.NOR. CENTRAL","W.SOU. CENTRAL"),sei!="NA") 
+owngunbyregion1<-data.frame(owngunbyregion$owngun,owngunbyregion$region,owngunbyregion$sei)
+
+owngunbyregion1 %>% glimpse()
+colnames(owngunbyregion1)<-c("Owngun","Region","SEISCORE")
+
+aggregatedata<-owngunbyregion1 %>%
+group_by(Owngun,Region) %>%
+summarise(SEISCORE=n())
+aggregatedata
+
+Figure9<- ggplot(aggregatedata, aes(x=Owngun, y=SEISCORE, fill=Region))+
+  geom_bar(aes(fill=Region), position = "dodge", stat="identity")+
+  ggtitle("Guns by Region and SEIScore")+
+  xlab("OwnGun")+ylab("SEISCORE")+
+  geom_text(aes(label = aggregatedata$SEISCORE), position=position_dodge(width=0.9), vjust=-0.25)+
+  labs(fill="Sector")+
+  annotate("text", x = 2, y = 125, label = "South Atlantic region has more guns")
+
+Figure9
+```
+
+The analysis[^1] is to find which region individuals have answered “Yes” for do you own a gun question in the survey and what is their corresponding SEI score. Different regions filter is applied since they can tell what countries have more guns based on the regions. 
+
+We have observed from the analysis that south Atlantic has more guns since most of the individuals who said yes are from that region. 
+
+In contrast, New England has the least “yeses.” Another observation is that it seems most of the observations are from south Atlantic since it has more “No’s” However, there is a possibility people from other regions could have left the column blank, which is been removed from our sample.
+
+#### Plotly Graph Experiment
+
+```{r warning=FALSE, message=FALSE}
+plotlygraph<-ggplot(data=owngunbyregion1, aes(x=Region, y=SEISCORE, fill=Owngun)) +geom_bar(stat="identity", position=position_dodge(), colour="black")+ggtitle("GunsbyRegionandSEIScore")+xlab("Region")+ylab("SEISCORE")+labs(fill="Sector")+annotate("text",x=0,y=97.5,label="Regionwithmoreguns&SEIScore")+scale_fill_manual(values=c("#999999", "#E69F00"))
+ggplotly(plotlygraph)
+```
+
+
+
+ggplotly[^2] will redirect the user to a webpage. if it is not able to open on IE, please copy the link and paste it other browser to access the graph and its robust features.We have experimented this plot type to see how this works
+
+
+
+### References
+
+[^1]: ggplot2 bar plot with two categorical variables.
+Link: https://stackoverflow.com/questions/24895575/ggplot2-bar-plot-with-two-categorical-variables?rq=1
+
+[^2]: geom_bar in ggplot2.
+Link: https://plot.ly/ggplot2/geom_bar/
+
+[^3]: ggplot2 box plot : Quick start guide - R software and data visualization. Link: http://www.sthda.com/english/wiki/ggplot2-box-plot-quick-start-guide-r-software-and-data-visualization
+
+[^4]: ggplot2 texts : Add text annotations to a graph in R software. Link: http://www.sthda.com/english/wiki/ggplot2-texts-add-text-annotations-to-a-graph-in-r-software
+

@@ -1,0 +1,161 @@
+---
+title: "Assignment 1"
+author: "Subhash Bharadwaj Pemmaraju, Raghu Mohan Sanugommula"
+date: "30th January 2019"
+output: 
+        html_document:
+                code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width = 12, fig.height = 8, echo = TRUE)
+
+
+library(scales)
+library(kableExtra)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+
+
+# Read the data
+all_data<-read.csv("C:/Users/subha/Desktop/ANLY512/ipeds2016.csv")
+
+# Subset the data to 5 states
+data1<-filter(all_data, STABBR %in% c("CA", "MA", "NY", "NC", "WA"))
+
+# Get the count of universities by state
+sum1<-data1 %>%
+  group_by(STABBR) %>%
+  summarise(Number_of_Universities = n())
+
+# Assign descriptions to the Sector classification
+data1$SECTOR.f<-factor(data1$SECTOR, labels = c(
+  "Public, >=4 yrs",
+  "Non-Profit, >=4 yrs",
+  "Profit, >=4 yrs",
+  "Non-Profit, 2 yrs",
+  "Profit, 2 yrs"
+))
+
+# Assign descriptions to the Degree classification
+data1$HLOFFER.f<-factor(data1$HLOFFER, labels = c(
+  "Associate's Degree",
+  "Postsecondary Award",
+  "Bachelor's Degree",
+  "Postbaccalaureate",
+  "Master's Degree",
+  "Post-master's Degree",
+  "Doctoral Degree"
+))
+
+# Count of universities by State and Sector
+sum2<-data1 %>%
+  group_by(STABBR, SECTOR.f) %>%
+  summarise(Number_of_Universities = n())
+
+
+
+sum3<-data1 %>%
+  group_by(STABBR, SECTOR.f) %>%
+  summarise(Average_Salaries = mean(SAAVMNT))             
+
+sum4<-filter(data1, HLOFFER %in% c(5,6,7,8,9))%>%
+  group_by(STABBR, HLOFFER.f) %>%
+  summarise(Number_of_Universities = n(),
+            Average_Salaries = mean(SAAVMNT))             
+
+```
+
+### Introduction: Initial Data Analysis
+
+The data for this analysis consists of universities from 5 states [^9] - 
+
+* California (CA)
+* Massachusetts (MA)
+* New York (NY)
+* North Carolina (NC)
+* Washington (WA)
+
+An Initial count of universities is made by State and by State and by State and Sector. The sectors have been renamed from coded numbers to descriptions using **factor** command [^8]
+
+```{r warning=FALSE, message=FALSE}
+sum1%>%kable("html")%>%kable_styling(bootstrap_options="striped",full_width=FALSE)
+sum2%>%kable("html")%>%kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+The formatting of the tables is achieved by using **kable styling** [^7] 
+
+As can be seen from the tables, there are is a distinct difference between states on how many universities they have and in different sectors. A **Bar Plot** of the data is made and reveals that New York has the most number of non-profits (`r sum2[12,3]`) as can be seen below[^1],[^5],[^6]:
+
+```{r warning=FALSE, message=FALSE}
+ggplot(sum2, aes(x=STABBR, y=Number_of_Universities, fill=SECTOR.f))+
+  geom_bar(aes(fill=SECTOR.f), position = "dodge", stat="identity")+
+  ggtitle("Chart 1: Number of universities by state and category")+
+  xlab("State Name")+ylab("Number of Universities")+
+  geom_text(aes(label = sum2$Number_of_Universities), position=position_dodge(width=0.9), vjust=-0.25)+
+  labs(fill="Sector")+
+  annotate("text", x = 4, y = 90, label = "NY has the most Non-profits")
+
+```
+
+
+### Analysis of Salaries
+#### Salary Distribution
+A chart of the average salaries by state and sector reveals surprisingly that on average public and non-profits with 4 year programs or above have higher salaries than for-profit programs. Furthermore we find that CA and MA in general have the highest salaries for these sectors [^4].
+
+```{r warning=FALSE, message=FALSE}
+ggplot(sum3, aes(x=STABBR, y=Average_Salaries, fill=SECTOR.f))+
+  geom_bar(aes(fill=SECTOR.f), position = "dodge", stat="identity")+
+  ggtitle("Chart 2: Average salary by state and category")+
+  xlab("State Name")+ylab("Average Salary")+
+  geom_text(aes(label = scales::comma(sum3$Average_Salaries)), position=position_dodge(width=0.9), vjust=-0.25)+
+  labs(fill="Sector")+
+  annotate("text", x = 1.1, y = 13750, label = "CA and MA have the highest salaries")+
+  scale_y_continuous(breaks = seq(0,15000, by=2500), limits = c(0,15000), labels = comma)
+
+```
+
+
+#### Further Analysis of Salary Distribution
+Further analysis of the salary data is carried out by plotting average salary against university count taking into account the state and level of degrees offered. As can be seen in **Chart 3**, universities in California offer on average, higher salary for undergraduate programs than universities that offer PhD programs. However, the salary of universities in Massachusetts is more closely aligned across different levels of programs offered. However, MA does offer a much higher salary for universities that offer PhD programs - the highest among all 5 states [^2],[^3].
+
+```{r warning=FALSE, message=FALSE}
+ggplot(sum4, aes(x=Number_of_Universities, y=Average_Salaries, group=STABBR, fill=HLOFFER.f))+
+  geom_point(aes(shape=STABBR, color=HLOFFER.f, size=2))+
+  ggtitle("Chart 3: Average salary vs University count")+
+  xlab("Uniersity Count")+ylab("Average Salary")+
+  labs(fill="Level of Degree", color = "Level of Degree")+
+  labs(shape="State")+
+  annotate("segment", x=1, y=14700, xend=52, yend=13000, color="blue")+
+  annotate("text", x =10, y=15500, label="CA has higher salary for Undegrad than Grad degree")+
+  annotate("rect", xmin=11, xmax=18, ymin=10000,ymax=11800, alpha=0.2)+
+  annotate("segment", x=18,y=11800,xend=25,yend=14500,color="black")+
+  annotate("text", x=15, y=9800, label = "MA has on average similar salaries but higher on Doctoral")
+
+```
+```{r warning=FALSE, message=FALSE}
+
+
+```
+
+### References
+
+[^1]: ggplot2 legend : Easy steps to change the position and the appearance of a graph legend in R software. Statistical tools for high-throughput data analysis.
+Link: http://www.sthda.com/english/wiki/ggplot2-legend-easy-steps-to-change-the-position-and-the-appearance-of-a-graph-legend-in-r-software
+
+[^2]:ggplot2 point shapes. Statistical tools for high-throughput data analysis. Link: http://www.sthda.com/english/wiki/ggplot2-point-shapes
+
+[^3]: Bhaskar VK. hrbrthemes : Additional Themes and Theme Components for 'ggplot2'. GitHub. Link: https://bhaskarvk.github.io/hrbrthemes/
+
+[^4]: Formatting ggplot2 axis labels with commas (and K? MM?) if I already have a y-scale. Stackoverflow. Link: https://stackoverflow.com/questions/37713351/formatting-ggplot2-axis-labels-with-commas-and-k-mm-if-i-already-have-a-y-sc
+
+[^5]: How to change legend title in ggplot. Stackoverflow. Link: https://stackoverflow.com/questions/14622421/how-to-change-legend-title-in-ggplot
+
+[^6]: How to put labels over geom_bar for each bar in R with ggplot2. Stackoverflow. Link: https://stackoverflow.com/questions/12018499/how-to-put-labels-over-geom-bar-for-each-bar-in-r-with-ggplot2
+
+[^7]: Zhu, Hao. (2019). Create Awesome HTML Table with knitr::kable and kableExtra. GitHub. Link: https://haozhu233.github.io/kableExtra/awesome_table_in_html.html#overview
+
+[^8]: FACTOR VARIABLES | R LEARNING MODULES. Institute for Digital Research and Education, UCLA. Link: https://stats.idre.ucla.edu/r/modules/factor-variables/
+
+[^9]: How to use or/and in dplyr to subset a data.frame. Stackoverflow. Link: https://stackoverflow.com/questions/24319747/how-to-use-or-and-in-dplyr-to-subset-a-data-frame 
