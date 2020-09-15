@@ -1,0 +1,225 @@
+---
+title: "Week 7"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Visualization 
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+```
+
+
+###View the data in mpg; then create a scatter plot of the engine size and fuel efficiency
+```{r message=FALSE, warning=FALSE}
+mpg
+
+ggplot(data=mpg)+geom_point(aes(x=displ, y=hwy))
+  
+```
+
+###We can add the class of the car to the above plot by using color function in the aesthetics
+```{r message=FALSE, warning=FALSE}
+ggplot(data=mpg)+geom_point(aes(x=displ, y=hwy, color=class))
+```
+
+###We can also use size function instead of color to show each class of car as a size of the point in a scatter plot
+```{r message=FALSE, warning=FALSE}
+ggplot(data=mpg)+geom_point(aes(x=displ, y=hwy, size=class))
+```
+
+###We can also use the alpha function to map the class of a car to its transparency; instead, we can use the shape function to map the class of a car
+```{r message=FALSE, warning=FALSE}
+ggplot(data = mpg) + 
+  geom_point(aes(x = displ, y = hwy, alpha = class))
+
+ggplot(data = mpg) + 
+  geom_point(aes(x = displ, y = hwy, shape = class))
+```
+
+###We can pick the color of the points for the scatter plot, it goes outside aesthetics
+```{r message=FALSE, warning=FALSE}
+ggplot(data = mpg) + 
+  geom_point(aes(x = displ, y = hwy), color = "blue")
+```
+
+###Facets are used to split plots into multiple ones corresponding to each value of a categorical variable. Facet_wrap() is used to achieve this; class of the car is a categorical variable that can be faceted
+```{r message=FALSE, warning=FALSE}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy)) + 
+  facet_wrap(~ class, nrow = 2)
+```
+
+###We can use facet_wrap() to facet using two different categorical variables
+```{r message=FALSE, warning=FALSE}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy)) + 
+  facet_grid(drv ~ cyl)
+```
+
+###we can use geom type to decide the type of chart. Geom_point generates a scatter plot and geom_smooth plots a smooth curve that best fits the points
+```{r message=FALSE, warning=FALSE}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy))
+
+ggplot(data = mpg) + 
+  geom_smooth(mapping = aes(x = displ, y = hwy))
+```
+
+###We can use linetype to plot different values of a categorical variable as a different type of smooothed line
+```{r message=FALSE, warning=FALSE}
+ggplot(data = mpg) + 
+  geom_smooth(mapping = aes(x = displ, y = hwy, linetype = drv))
+
+```
+
+###We can overlap two plots to show both color and line type
+```{r message=FALSE, warning=FALSE}
+ggplot(data = mpg) + 
+  geom_smooth(mapping = aes(x = displ, y = hwy, linetype = drv, color = drv))+
+  geom_point(mapping = aes(x = displ, y = hwy, color = drv))
+```
+
+###We can display multiple geom types in one plot by overlapping them
+```{r message=FALSE, warning=FALSE}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy)) +
+  geom_smooth(mapping = aes(x = displ, y = hwy))
+```
+
+###We can use color and smooth to show the points with different color types for class of cars and a smoothed geom through them; we can plot a smoothed line through a subset of the data, namely class = "subcompact"
+```{r message=FALSE, warning=FALSE}
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy)) + 
+  geom_point(mapping = aes(color = class)) + 
+  geom_smooth()
+
+
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy)) + 
+  geom_point(mapping = aes(color = class)) + 
+  geom_smooth(data = filter(mpg, class == "subcompact"), se = FALSE)
+```
+
+### We can use bar plots to plot statistical distribution by categorical variables
+```{r message=FALSE, warning=FALSE}
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut))
+
+```
+
+###we can use stats instead of geom_bar to get the same result, the count of each value of a categorical variable
+```{r message=FALSE, warning=FALSE}
+ggplot(data = diamonds) + 
+  stat_count(mapping = aes(x = cut))
+```
+
+###The default type of the bar can be changed from count to actual value using "identity"
+```{r message=FALSE, warning=FALSE}
+demo <- tribble(
+  ~cut,         ~freq,
+  "Fair",       1610,
+  "Good",       4906,
+  "Very Good",  12082,
+  "Premium",    13791,
+  "Ideal",      21551
+)
+
+ggplot(data = demo) +
+  geom_bar(mapping = aes(x = cut, y = freq), stat = "identity")
+```
+
+###We can use proportion instead of count to get proportion of population that a bar represents; We can use stat_summary() to get plots of statistical summaries by different variables
+```{r message=FALSE, warning=FALSE}
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, y = ..prop.., group = 1))
+
+ggplot(data = diamonds) + 
+  stat_summary(
+    mapping = aes(x = cut, y = depth),
+    fun.ymin = min,
+    fun.ymax = max,
+    fun.y = median
+  )
+
+```
+
+###We can use color and fill to color the bar charts in different ways - border colors vs fill colors 
+```{r message=FALSE, warning=FALSE}
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, colour = cut))
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = cut))
+```
+
+###We can use stacked bars by using two different variables in bar aesthetics
+```{r message=FALSE, warning=FALSE}
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = clarity))
+```
+
+###We can  use alpha to manage transparency or fill = NA to not fill it with any color
+```{r message=FALSE, warning=FALSE}
+ggplot(data = diamonds, mapping = aes(x = cut, fill = clarity)) + 
+  geom_bar(alpha = 1/5, position = "identity")
+ggplot(data = diamonds, mapping = aes(x = cut, colour = clarity)) + 
+  geom_bar(fill = NA, position = "identity")
+```
+
+###position = fill can be use to create stacked bars that are off the same height for easier visual inspection
+```{r message=FALSE, warning=FALSE}
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = clarity), position = "fill")
+```
+
+###position = dodge can be used to stack bars next to each other instead of on top of each other
+```{r message=FALSE, warning=FALSE}
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = clarity), position = "dodge")
+```
+
+###we can use jitter to address the problem of overplotting by adding some random noise to each point
+```{r message=FALSE, warning=FALSE}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy), position = "jitter")
+```
+
+###boxplot can be used to plot statistical distribution of data and can be shown either horizontally or vertically
+```{r message=FALSE, warning=FALSE}
+ggplot(data = mpg, mapping = aes(x = class, y = hwy)) + 
+  geom_boxplot()
+ggplot(data = mpg, mapping = aes(x = class, y = hwy)) + 
+  geom_boxplot() +
+  coord_flip()
+```
+
+###coord_quickmap can be used to set aspect ratios for maps
+```{r message=FALSE, warning=FALSE}
+nz <- map_data("nz")
+
+ggplot(nz, aes(long, lat, group = group)) +
+  geom_polygon(fill = "white", colour = "black")
+
+ggplot(nz, aes(long, lat, group = group)) +
+  geom_polygon(fill = "white", colour = "black") +
+  coord_quickmap()
+```
+
+###coord_polar can be used to plot polar coordinates
+```{r message=FALSE, warning=FALSE}
+bar <- ggplot(data = diamonds) + 
+  geom_bar(
+    mapping = aes(x = cut, fill = cut), 
+    show.legend = FALSE,
+    width = 1
+  ) + 
+  theme(aspect.ratio = 1) +
+  labs(x = NULL, y = NULL)
+
+bar + coord_flip()
+bar + coord_polar()
+```
+

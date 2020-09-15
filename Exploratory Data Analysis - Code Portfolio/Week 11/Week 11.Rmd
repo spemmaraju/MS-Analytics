@@ -1,0 +1,112 @@
+---
+title: "Week 11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Principal Component Analysis in R
+
+###We will use mtcars dataset for PCA; "vs" and "am" are both categorical variables. We will only use numerical variables for PCA. So we exclude the categorical ones for further analysis
+```{r message=FALSE, warning=FALSE}
+library(ggbiplot)
+data(mtcars)
+mtcars.pca <- prcomp(mtcars[,c(1:7,10,11)], center = TRUE,scale. = TRUE)
+
+summary(mtcars.pca)
+
+str(mtcars.pca)
+```
+
+
+###We can plot the principal components using ggbiplot; we can name each of the point with the label of the car it corresponds to using labels=rownames() function
+```{r message=FALSE, warning=FALSE}
+ggbiplot(mtcars.pca)
+
+ggbiplot(mtcars.pca, labels=rownames(mtcars))
+
+```
+
+
+###We can group the results into different groups based on which country the cars came from. We can create such a list and assign that list as groups to the plot. If we set ellipse function = TRUE, each of these groups in the plot will be surrounded by an ellipse representing that group
+```{r message=FALSE, warning=FALSE}
+mtcars.country <- c(rep("Japan", 3), rep("US",4), rep("Europe", 7),rep("US",3), "Europe", rep("Japan", 3), rep("US",4), rep("Europe", 3), "US", rep("Europe", 3))
+
+ggbiplot(mtcars.pca,ellipse=TRUE,  labels=rownames(mtcars), groups=mtcars.country)
+```
+
+
+###The above plot only shows PC1 and PC2. We can plot the other components as well as shown below.
+```{r message=FALSE, warning=FALSE}
+ggbiplot(mtcars.pca,ellipse=TRUE,choices=c(3,4),   labels=rownames(mtcars), groups=mtcars.country)
+
+```
+
+
+###We can add circles to the center of the dataset 
+```{r message=FALSE, warning=FALSE}
+ggbiplot(mtcars.pca,ellipse=TRUE,circle=TRUE, labels=rownames(mtcars), groups=mtcars.country)
+
+```
+
+
+###We can adjust the scale of the sample data and the variables involved
+```{r message=FALSE, warning=FALSE}
+ggbiplot(mtcars.pca,ellipse=TRUE,obs.scale = 1, var.scale = 1,  labels=rownames(mtcars), groups=mtcars.country)
+
+```
+
+
+###We can get rid of the arrows that point to the variables in the Principal component using var.axes function
+```{r message=FALSE, warning=FALSE}
+ggbiplot(mtcars.pca,ellipse=TRUE,obs.scale = 1, var.scale = 1,var.axes=FALSE,   labels=rownames(mtcars), groups=mtcars.country)
+
+```
+
+
+###We can customize the plot in various ways such as changing the colors used, adding titles, adjust theme etc.
+```{r message=FALSE, warning=FALSE}
+ggbiplot(mtcars.pca,ellipse=TRUE,obs.scale = 1, var.scale = 1,  labels=rownames(mtcars), groups=mtcars.country) +
+  scale_colour_manual(name="Origin", values= c("forest green", "red3", "dark blue"))+
+  ggtitle("PCA of mtcars dataset")+
+  theme_minimal()+
+  theme(legend.position = "bottom")
+```
+
+
+###We can add a new sample to the dataset by adding that variable and value to the dataset and running PCA again
+```{r message=FALSE, warning=FALSE}
+spacecar <- c(1000,60,50,500,0,0.5,2.5,0,1,0,0)
+
+mtcarsplus <- rbind(mtcars, spacecar)
+mtcars.countryplus <- c(mtcars.country, "Jupiter")
+
+mtcarsplus.pca <- prcomp(mtcarsplus[,c(1:7,10,11)], center = TRUE,scale. = TRUE)
+
+ggbiplot(mtcarsplus.pca, obs.scale = 1, var.scale = 1, ellipse = TRUE, circle = FALSE, var.axes=TRUE, labels=c(rownames(mtcars), "spacecar"), groups=mtcars.countryplus)+
+  scale_colour_manual(name="Origin", values= c("forest green", "red3", "violet", "dark blue"))+
+  ggtitle("PCA of mtcars dataset, with extra sample added")+
+  theme_minimal()+
+  theme(legend.position = "bottom")
+```
+
+
+###In the above case, we added the new sample to the dataset and ran the PCA again. We can also keep the existing PCA as is and project where our new sample would be in the existing PCA. 
+```{r message=FALSE, warning=FALSE}
+s.sc <- scale(t(spacecar[c(1:7,10,11)]), center= mtcars.pca$center)
+s.pred <- s.sc %*% mtcars.pca$rotation
+
+
+mtcars.plusproj.pca <- mtcars.pca
+mtcars.plusproj.pca$x <- rbind(mtcars.plusproj.pca$x, s.pred)
+
+
+ggbiplot(mtcars.plusproj.pca, obs.scale = 1, var.scale = 1, ellipse = TRUE, circle = FALSE, var.axes=TRUE, labels=c(rownames(mtcars), "spacecar"), groups=mtcars.countryplus)+
+  scale_colour_manual(name="Origin", values= c("forest green", "red3", "violet", "dark blue"))+
+  ggtitle("PCA of mtcars dataset, with extra sample projected")+
+  theme_minimal()+
+  theme(legend.position = "bottom")
+```
+

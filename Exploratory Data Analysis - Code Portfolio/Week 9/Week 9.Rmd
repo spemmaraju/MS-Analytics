@@ -1,0 +1,70 @@
+---
+title: "Week 9"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Plotting Systems
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(lattice)
+library(datasets)
+```
+
+
+###We can add a smooth line to highlight trends on plots
+```{r message=FALSE, warning=FALSE}
+data(airquality)
+
+with(airquality, {plot(Temp, Ozone)+lines(loess.smooth(Temp, Ozone))})
+  
+```
+
+###We can add annotations to plots such as a title
+```{r message=FALSE, warning=FALSE}
+  data(cars)
+ with(cars, plot(speed, dist))
+ title("Speed vs. Stopping distance")
+```
+
+###Lattice plots can be used to evaluate how one variable varies with another at different levels of a third variable. For example, it can be used to see how life expectancy and income vary by different regions
+```{r message=FALSE, warning=FALSE}
+state <- data.frame(state.x77, region = state.region)
+xyplot(Life.Exp ~ Income | region, data = state, layout = c(4, 1))
+```
+
+###scatter plot can also be drawn with qplot
+```{r message=FALSE, warning=FALSE}
+data(mpg)
+qplot(displ, hwy, data = mpg)
+```
+
+##Chapter 8: Graphic Devices
+
+###One way to use plots is to save them in a file
+```{r message=FALSE, warning=FALSE}
+## Open a PDF file
+pdf(file = "myplot.pdf")  
+## Plot something that will be used to save to a file
+with(faithful, plot(eruptions, waiting))  
+## Add titles and other annotations as needed
+title(main = "Old Faithful Geyser data")
+## Close the PDF file you just opened and wrote the plot to
+dev.off() 
+```
+
+###We can also copy plots we created to image files
+```{r message=FALSE, warning=FALSE}
+with(faithful, plot(eruptions, waiting)) 
+title(main = "Old Faithful Geyser data") 
+
+##Copy to an image file
+dev.copy(png, file = "geyserplot.png") 
+##Close the file that you opened to save to file
+dev.off()  
+```

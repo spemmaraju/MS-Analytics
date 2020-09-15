@@ -1,0 +1,282 @@
+---
+title: "Week 10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## K-means clustering (UC Business Analytics R Programming Guide)
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(cluster)
+library(factoextra)
+library(gridExtra)
+library(dendextend)
+```
+
+
+###US Arrests data can be used to carry out K-means clustering
+```{r message=FALSE, warning=FALSE}
+df<-USArrests
+## remove missing values
+df<-na.omit(df)
+##Standardize the data using scale function
+df<-scale(df)
+##We can get euclidian distance using get_dist function; we can visualize that distance using fviz_distance function
+distance <- get_dist(df)
+fviz_dist(distance, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+```
+
+
+###K-means clustering involves choosing the number of clusters, and number of initial configurations
+```{r message=FALSE, warning=FALSE}
+k2 <- kmeans(df, centers = 2, nstart = 25)
+str(k2)
+k2
+##We can visualize the clusters by using fviz_cluster
+fviz_cluster(k2, data=df)
+```
+
+
+###We can use plots to plot the two clusters and compare against original variables
+```{r message=FALSE, warning=FALSE}
+df %>%
+  as_tibble() %>%
+  mutate(cluster = k2$cluster,
+         state = row.names(USArrests)) %>%
+  ggplot(aes(UrbanPop, Murder, color = factor(cluster), label = state)) +
+  geom_text()
+```
+
+
+###We can compare the different results we get by choosing different number of clusters and plotting them in a grid using grid.arrange()
+```{r message=FALSE, warning=FALSE}
+k3 <- kmeans(df, centers = 3, nstart = 25)
+k4 <- kmeans(df, centers = 4, nstart = 25)
+k5 <- kmeans(df, centers = 5, nstart = 25)
+
+p1 <- fviz_cluster(k2, geom = "point", data = df) + ggtitle("k = 2")
+p2 <- fviz_cluster(k3, geom = "point",  data = df) + ggtitle("k = 3")
+p3 <- fviz_cluster(k4, geom = "point",  data = df) + ggtitle("k = 4")
+p4 <- fviz_cluster(k5, geom = "point",  data = df) + ggtitle("k = 5")
+
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+```
+
+
+###The optimal number of clusters can be determined by minimizing the within cluster sum of squares of variation
+```{r message=FALSE, warning=FALSE}
+##Elbow method
+set.seed(123)
+##Get the within cluster sum of squares
+wss <- function(k) {
+  kmeans(df, k, nstart = 10 )$tot.withinss
+}
+##Try different number of clusters from 1 to 15
+k.values <- 1:15
+##compute the within sum of squares for each of those number of clusters
+wss_values <- map_dbl(k.values, wss)
+##Plot within sum of squares against number of clusters
+plot(k.values, wss_values,
+       type="b", pch = 19, frame = FALSE, 
+       xlab="Number of clusters K",
+       ylab="Total within-clusters sum of squares")
+```
+
+
+###We can do the same as above using one single function
+```{r message=FALSE, warning=FALSE}
+set.seed(123)
+
+fviz_nbclust(df, kmeans, method = "wss")
+```
+
+
+###Average Silhouette method can be used to measure how well each element in a cluster can lie within a given cluster. 
+```{r message=FALSE, warning=FALSE}
+##Average silhouette can be calculated using below function
+avg_sil <- function(k) {
+  km.res <- kmeans(df, centers = k, nstart = 25)
+  ss <- silhouette(km.res$cluster, dist(df))
+  mean(ss[, 3])
+}
+
+k.values <- 2:15
+
+avg_sil_values <- map_dbl(k.values, avg_sil)
+
+plot(k.values, avg_sil_values,
+       type = "b", pch = 19, frame = FALSE, 
+       xlab = "Number of clusters K",
+       ylab = "Average Silhouettes")
+##We can compute the same as above using a single function for silhouette method
+fviz_nbclust(df, kmeans, method = "silhouette")
+
+```
+
+
+###Gap statistic method: 
+```{r message=FALSE, warning=FALSE}
+##We can write a function to compute gap statistic
+set.seed(123)
+gap_stat <- clusGap(df, FUN = kmeans, nstart = 25,
+                    K.max = 10, B = 50)
+
+print(gap_stat, method = "firstmax")
+
+fviz_gap_stat(gap_stat)
+
+```
+
+
+###It can also be computed using k-means clustering
+```{r message=FALSE, warning=FALSE}
+set.seed(123)
+final <- kmeans(df, 4, nstart = 25)
+print(final)
+fviz_cluster(final, data = df)
+```
+
+
+###we can use these cluster level data and save them back to calculate descriptive statistics
+```{r message=FALSE, warning=FALSE}
+USArrests %>%
+  mutate(Cluster = final$cluster) %>%
+  group_by(Cluster) %>%
+  summarise_all("mean")
+```
+
+
+##Hierarchical Cluster Analysis
+```{r message=FALSE, warning=FALSE}
+
+df <- USArrests
+df <- na.omit(df)
+df <- scale(df)
+## We can use heirarchical clustering with complete linkage
+df1<-as.dist(1-cor(t(df))/2)
+hc1 <- hclust(df1, method = "complete" )
+## We can plot the dendrogram
+plot(hc1, cex = 0.6, hang = -1)
+
+## We can also use the agnes function instead to compute the hierarchical clusters
+hc2 <- agnes(df, method = "complete")
+hc2$ac
+
+```
+
+
+### We can use multiple methods to identify the strength of the clustering we choose. there are several methods.
+```{r message=FALSE, warning=FALSE}
+m <- c( "average", "single", "complete", "ward")
+names(m) <- c( "average", "single", "complete", "ward")
+
+ac <- function(x) {
+  agnes(df, method = x)$ac
+}
+
+map_dbl(m, ac)
+
+##We can visualize the dendrogram using below:
+hc3 <- agnes(df, method = "ward")
+pltree(hc3, cex = 0.6, hang = -1, main = "Dendrogram of agnes") 
+```
+
+
+###Divisive hierarchical clustering: This can be performed using diana function
+```{r message=FALSE, warning=FALSE}
+hc4 <- diana(df)
+hc4$dc
+pltree(hc4, cex = 0.6, hang = -1, main = "Dendrogram of diana")
+
+```
+
+
+###cutree can be used to decide number of cuts on the dendrogram (number of clusters)
+```{r message=FALSE, warning=FALSE}
+hc5 <- hclust(df1, method = "ward.D2" )
+sub_grp <- cutree(hc5, k = 4)
+table(sub_grp)
+USArrests %>%
+  mutate(cluster = sub_grp) %>%
+    head
+
+plot(hc5, cex = 0.6)
+rect.hclust(hc5, k = 4, border = 2:5)
+##We can visualize the clusters using fviz_cluster
+fviz_cluster(list(data = df, cluster = sub_grp))
+
+```
+
+
+###We can use cutree with agnes and diana functions to perform the hierarchical clustering analysis
+```{r message=FALSE, warning=FALSE}
+hc_a <- agnes(df, method = "ward")
+cutree(as.hclust(hc_a), k = 4)
+
+hc_d <- diana(df)
+cutree(as.hclust(hc_d), k = 4)
+
+res.dist <- dist(df, method = "euclidean")
+hc1 <- hclust(res.dist, method = "complete")
+hc2 <- hclust(res.dist, method = "ward.D2")
+dend1 <- as.dendrogram (hc1)
+dend2 <- as.dendrogram (hc2)
+
+tanglegram(dend1, dend2)
+```
+
+
+###The quality of alignment between two trees is called entanglement and can be measured using entanglement function. The output is plotted using tanglegram
+```{r message=FALSE, warning=FALSE}
+dend_list <- dendlist(dend1, dend2)
+
+tanglegram(dend1, dend2,
+  highlight_distinct_edges = FALSE, # Turn-off dashed lines
+  common_subtrees_color_lines = FALSE, # Turn-off line colors
+  common_subtrees_color_branches = TRUE, # Color common branches 
+  main = paste("entanglement =", round(entanglement(dend_list), 2))
+  )
+```
+
+
+##K-Means cluster (Peng)
+
+
+###We can test it using randomly generated data
+```{r message=FALSE, warning=FALSE}
+set.seed(1234)
+x <- rnorm(12, mean = rep(1:3, each = 4), sd = 0.2)
+y <- rnorm(12, mean = rep(c(1, 2, 1), each = 4), sd = 0.2)
+
+plot(x, y, col = "blue", pch = 19, cex = 2)
+
+text(x + 0.05, y + 0.05, labels = as.character(1:12))
+```
+
+
+###K-means clustering example
+```{r message=FALSE, warning=FALSE}
+dataFrame <- data.frame(x, y)
+kmeansObj <- kmeans(dataFrame, centers = 3)
+names(kmeansObj)
+
+set.seed(1234)
+dataMatrix <- as.matrix(dataFrame)[sample(1:12), ]
+kmeansObj <- kmeans(dataMatrix, centers = 3)
+```
+
+
+###we can plot the analysis in an image plot
+```{r message=FALSE, warning=FALSE}
+par(mfrow = c(1, 2))
+
+image(t(dataMatrix)[, nrow(dataMatrix):1], yaxt = "n", main = "Original Data")
+
+image(t(dataMatrix)[, order(kmeansObj$cluster)], yaxt = "n", main = "Clustered Data")
+```
+
+
